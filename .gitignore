@@ -1,21 +1,14 @@
-# Virtual environment
 .venv/
 venv/
-
-# Python cache
+src/venv/
 __pycache__/
-*.pyc
-
-# VS Code
+*.py[cod]
+outputs/cache/
+outputs/bertopic_model/
+*.npy
+*.pkl
+.idea/
 .vscode/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Build/output folders
-outputs/
-data/
-
-# OS files
 .DS_Store
-Thumbs.db
+._*
+Untitled*.txt
