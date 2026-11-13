@@ -450,7 +450,7 @@ def apply_fullwidth_tactical_map(fig, height=445):
 for k, v in [
     ("cycle", 1),
     ("last_refresh", datetime.now()),
-    ("auto_refresh", True),
+    ("auto_refresh", False),
     ("active_cats", list(URGENCY_COLORS.keys())),
 ]:
     if k not in st.session_state:
@@ -529,7 +529,7 @@ def _fallback_sklearn_topics(df: pd.DataFrame, n_topics: int = 5):
 
 
 # ── Real-Time Data + Local Model Pipeline ────────────────────────────────────
-@st.cache_data(ttl=8, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def run_realtime_pipeline(cycle: int, batch_size: int = 35, run_bertopic: bool = True):
     df = get_live_tweets(n=batch_size)
     df = preprocess(df, text_col="text", filter_lang=False, dedup=True)
@@ -594,7 +594,7 @@ with st.sidebar:
 
     n_tw = st.slider("Stream Batch Size", 15, 80, 35, 5)
     refresh_sec = st.select_slider(
-        "Polling Interval", options=[5, 10, 15, 30], value=10, format_func=lambda x: f"{x}s"
+        "Polling Interval", options=[30, 60, 120], value=60, format_func=lambda x: f"{x}s"
     )
     auto = st.toggle("Live Stream Polling", value=st.session_state.auto_refresh)
     st.session_state.auto_refresh = auto
