@@ -36,7 +36,7 @@ logging.getLogger("torch").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore")
 
 sys.path.insert(0, os.path.dirname(__file__))
-from live_feed import get_live_tweets
+from live_feed import get_live_tweets, geocode_exact_india
 from preprocessor import preprocess
 from intelligence import add_urgency_scores, add_geo_tags
 from alert_system import check_alerts, get_severity_label
@@ -407,13 +407,58 @@ URGENCY_SHORT_LABELS = {
     "information": "INFO",
 }
 CITY_COORDS = {
-    "chennai": (13.08, 80.27), "assam": (26.14, 91.74), "patna": (25.59, 85.13),
-    "bihar": (25.09, 85.31), "uttarakhand": (30.06, 79.01), "mumbai": (19.07, 72.87),
-    "odisha": (20.29, 85.82), "gujarat": (22.25, 71.19), "srinagar": (34.08, 74.79),
-    "silchar": (24.82, 92.80), "manipur": (24.66, 93.90), "kedarnath": (30.73, 79.06),
-    "guwahati": (26.14, 91.74), "bhubaneswar": (20.29, 85.82), "kolkata": (22.57, 88.36),
-    "delhi": (28.61, 77.23), "bangalore": (12.97, 77.59), "hyderabad": (17.38, 78.48),
-    "lucknow": (26.84, 80.94), "nagpur": (21.14, 79.08), "himachal": (31.10, 77.17),
+    # All 28 States & 8 UTs
+    "andhra pradesh": (15.91, 79.74), "andhra": (15.91, 79.74),
+    "arunachal pradesh": (28.21, 94.72), "assam": (26.20, 92.93),
+    "bihar": (25.09, 85.31), "chhattisgarh": (21.27, 81.86),
+    "goa": (15.29, 74.12), "gujarat": (22.25, 71.19),
+    "haryana": (29.05, 76.08), "himachal pradesh": (31.10, 77.17), "himachal": (31.10, 77.17),
+    "jharkhand": (23.61, 85.27), "karnataka": (15.31, 75.71),
+    "kerala": (10.85, 76.27), "madhya pradesh": (22.97, 78.65),
+    "maharashtra": (19.75, 75.71), "manipur": (24.66, 93.90),
+    "meghalaya": (25.46, 91.36), "mizoram": (23.16, 92.93),
+    "nagaland": (26.15, 94.56), "odisha": (20.95, 85.09), "orissa": (20.95, 85.09),
+    "punjab": (31.14, 75.34), "rajasthan": (27.02, 74.21),
+    "sikkim": (27.53, 88.51), "tamil nadu": (11.12, 78.65),
+    "telangana": (18.11, 79.01), "tripura": (23.94, 91.98),
+    "uttar pradesh": (26.84, 80.94), "uttarakhand": (30.06, 79.01),
+    "west bengal": (22.98, 87.85), "delhi": (28.61, 77.23),
+    "jammu": (32.72, 74.85), "kashmir": (34.08, 74.79), "jammu and kashmir": (33.77, 76.57),
+    "ladakh": (34.15, 77.57), "puducherry": (11.94, 79.80),
+    "andaman": (11.74, 92.65), "nicobar": (7.12, 93.78), "lakshadweep": (10.56, 72.64),
+    "chandigarh": (30.73, 76.77),
+    # Major Cities Pan-India
+    "visakhapatnam": (17.68, 83.21), "vijayawada": (16.50, 80.64), "tirupati": (13.62, 79.41),
+    "kakinada": (16.98, 82.24), "nellore": (14.44, 79.98), "guntur": (16.30, 80.43),
+    "chennai": (13.08, 80.27), "coimbatore": (11.01, 76.95), "madurai": (9.92, 78.11),
+    "nagapattinam": (10.76, 79.84), "cuddalore": (11.74, 79.77), "thoothukudi": (8.76, 78.13),
+    "bengaluru": (12.97, 77.59), "bangalore": (12.97, 77.59), "mangaluru": (12.91, 74.85),
+    "mangalore": (12.91, 74.85), "kodagu": (12.33, 75.80), "coorg": (12.33, 75.80),
+    "thiruvananthapuram": (8.52, 76.93), "kochi": (9.93, 76.26), "wayanad": (11.68, 76.13),
+    "idukki": (9.91, 77.10), "kozhikode": (11.25, 75.78),
+    "hyderabad": (17.38, 78.48), "warangal": (17.96, 79.59), "khammam": (17.24, 80.15),
+    "mumbai": (19.07, 72.87), "pune": (18.52, 73.85), "nagpur": (21.14, 79.08),
+    "nashik": (19.99, 73.78), "kolhapur": (16.70, 74.24), "ratnagiri": (16.99, 73.31),
+    "ahmedabad": (23.02, 72.57), "surat": (21.17, 72.83), "vadodara": (22.30, 73.18),
+    "rajkot": (22.30, 70.80), "kutch": (23.73, 69.85), "bhuj": (23.24, 69.66),
+    "bhubaneswar": (20.29, 85.82), "cuttack": (20.46, 85.88), "puri": (19.81, 85.83),
+    "balasore": (21.49, 86.93), "gopalpur": (19.26, 84.90), "paradip": (20.31, 86.61),
+    "kolkata": (22.57, 88.36), "siliguri": (26.72, 88.39), "darjeeling": (27.04, 88.26),
+    "digha": (21.62, 87.50), "sundarbans": (21.94, 89.18),
+    "patna": (25.59, 85.13), "muzaffarpur": (26.12, 85.39), "darbhanga": (26.15, 85.89),
+    "guwahati": (26.14, 91.74), "silchar": (24.82, 92.80), "dibrugarh": (27.47, 94.91),
+    "kaziranga": (26.57, 93.17), "imphal": (24.81, 93.93), "shillong": (25.57, 91.89),
+    "aizawl": (23.72, 92.71), "kohima": (25.67, 94.10), "agartala": (23.83, 91.28),
+    "gangtok": (27.33, 88.61), "lucknow": (26.84, 80.94), "varanasi": (25.31, 82.97),
+    "prayagraj": (25.43, 81.84), "gorakhpur": (26.76, 83.37),
+    "dehradun": (30.31, 78.03), "kedarnath": (30.73, 79.06), "joshimath": (30.55, 79.56),
+    "chamoli": (30.40, 79.32), "uttarkashi": (30.72, 78.43),
+    "shimla": (31.10, 77.17), "manali": (32.24, 77.18), "kullu": (31.95, 77.10),
+    "jalandhar": (31.32, 75.57), "amritsar": (31.63, 74.87), "ludhiana": (30.90, 75.85),
+    "jaipur": (26.91, 75.78), "jodhpur": (26.23, 73.02), "udaipur": (24.58, 73.71),
+    "bhopal": (23.25, 77.41), "indore": (22.71, 75.85), "raipur": (21.25, 81.62),
+    "ranchi": (23.34, 85.30), "srinagar": (34.08, 74.79), "leh": (34.15, 77.57),
+    "port blair": (11.62, 92.72), "bay of bengal": (15.00, 86.00), "arabian sea": (16.00, 69.00),
 }
 
 
@@ -781,20 +826,36 @@ with tab1:
         )
         map_rows = []
         for _, row in fdf.iterrows():
+            urg = row.get("urgency_category", "information")
             locs = row.get("locations", [])
-            if not isinstance(locs, list):
+            city_name = locs[0].title() if isinstance(locs, list) and locs else "India"
+
+            # 1. Use exact GPS coordinates from USGS / GDACS if available
+            if pd.notna(row.get("lat")) and pd.notna(row.get("lon")):
+                map_rows.append({
+                    "lat": float(row["lat"]),
+                    "lon": float(row["lon"]),
+                    "urgency": urg,
+                    "city": city_name,
+                    "text": str(row.get("clean_text", ""))[:85],
+                })
                 continue
-            for loc in locs:
-                c = CITY_COORDS.get(loc.lower())
-                if c:
-                    urg = row.get("urgency_category", "information")
-                    map_rows.append({
-                        "lat": c[0] + random.uniform(-0.18, 0.18),
-                        "lon": c[1] + random.uniform(-0.18, 0.18),
-                        "urgency": urg,
-                        "city": loc.title(),
-                        "text": str(row.get("clean_text", ""))[:85],
-                    })
+
+            if isinstance(locs, list):
+                for loc in locs:
+                    c = CITY_COORDS.get(loc.lower())
+                    if not c:
+                        lat, lon = geocode_exact_india(loc)
+                        if lat is not None and lon is not None:
+                            c = (lat, lon)
+                    if c:
+                        map_rows.append({
+                            "lat": c[0] + random.uniform(-0.04, 0.04),
+                            "lon": c[1] + random.uniform(-0.04, 0.04),
+                            "urgency": urg,
+                            "city": loc.title(),
+                            "text": str(row.get("clean_text", ""))[:85],
+                        })
 
         if map_rows:
             mdf = pd.DataFrame(map_rows)
@@ -1017,22 +1078,45 @@ with tab3:
     )
     coords, meta = [], []
     for _, row in df.iterrows():
+        urg = row.get("urgency_category", "information")
         locs = row.get("locations", [])
-        if not isinstance(locs, list):
+        city_name = locs[0].title() if isinstance(locs, list) and locs else "India"
+
+        # 1. Use exact GPS coordinates from USGS / GDACS if available
+        if pd.notna(row.get("lat")) and pd.notna(row.get("lon")):
+            coords.append([float(row["lat"]), float(row["lon"])])
+            meta.append({
+                "city": city_name,
+                "urgency": urg,
+                "text": str(row.get("clean_text", ""))[:75],
+            })
             continue
-        for loc in locs:
-            c = CITY_COORDS.get(loc.lower())
-            if c:
-                coords.append([c[0] + random.uniform(-0.09, 0.09), c[1] + random.uniform(-0.09, 0.09)])
-                meta.append({
-                    "city": loc.title(),
-                    "urgency": row.get("urgency_category", "information"),
-                    "text": str(row.get("clean_text", ""))[:75],
-                })
+
+        if isinstance(locs, list):
+            for loc in locs:
+                c = CITY_COORDS.get(loc.lower())
+                if not c:
+                    lat, lon = geocode_exact_india(loc)
+                    if lat is not None and lon is not None:
+                        c = (lat, lon)
+                if c:
+                    coords.append([c[0] + random.uniform(-0.04, 0.04), c[1] + random.uniform(-0.04, 0.04)])
+                    meta.append({
+                        "city": loc.title(),
+                        "urgency": urg,
+                        "text": str(row.get("clean_text", ""))[:75],
+                    })
 
     if len(coords) >= 3:
         arr = np.array(coords)
-        labels = DBSCAN(eps=0.32, min_samples=2).fit_predict(StandardScaler().fit_transform(arr))
+        kms_per_radian = 6371.0088
+        eps_radians = 75.0 / kms_per_radian  # 75 km geodesic hotspot radius
+        labels = DBSCAN(
+            eps=eps_radians,
+            min_samples=2,
+            algorithm="ball_tree",
+            metric="haversine",
+        ).fit_predict(np.radians(arr))
         n_clusters = len(set(labels) - {-1})
         n_noise = list(labels).count(-1)
 

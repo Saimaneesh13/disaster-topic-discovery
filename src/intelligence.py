@@ -63,12 +63,28 @@ URGENCY_KEYWORDS = {
 }
 
 
+RESOLVED_OR_DRILL_PHRASES = (
+    "mock drill", "rescue completed", "safely rescued", "all safe",
+    "no casualties", "no damage", "alert lifted", "averted", "under control",
+    "normalcy restored", "reopened"
+)
+
 def score_urgency(text: str) -> dict:
     """
-    Returns urgency category + numeric score for a single tweet.
-    Scans all category keyword lists and picks highest match.
+    Returns urgency category + numeric score with negation/drill filtering.
     """
     text_lower = text.lower()
+
+    # Downgrade resolved events or drills to 'information'
+    if any(phrase in text_lower for phrase in RESOLVED_OR_DRILL_PHRASES):
+        cat = URGENCY_KEYWORDS["information"]
+        return {
+            "urgency_category": "information",
+            "urgency_score": cat["score"],
+            "urgency_color": cat["color"],
+            "urgency_icon": cat["icon"],
+        }
+
     best_category = "information"
     best_score = 0
 
@@ -99,43 +115,35 @@ def add_urgency_scores(df: pd.DataFrame, text_col: str = "clean_text") -> pd.Dat
     return df
 
 
-# ── Geo extraction (regex-based, no spaCy download needed) ──────────────────
-INDIA_LOCATIONS = [
-    # States
-    "assam", "bihar", "odisha", "uttarakhand", "himachal", "gujarat", "rajasthan",
-    "maharashtra", "kerala", "karnataka", "andhra", "telangana", "west bengal",
-    "uttar pradesh", "madhya pradesh", "chhattisgarh", "jharkhand", "manipur",
-    "nagaland", "mizoram", "meghalaya", "tripura", "sikkim", "goa", "punjab",
-    "haryana", "jammu", "kashmir", "ladakh",
-    # Major cities
-    "delhi", "mumbai", "chennai", "kolkata", "bangalore", "hyderabad", "pune",
-    "ahmedabad", "jaipur", "surat", "patna", "lucknow", "bhopal", "nagpur",
-    "indore", "bhubaneswar", "guwahati", "imphal", "agartala", "shillong",
-    "dehradun", "chandigarh", "srinagar", "silchar", "dibrugarh", "siliguri",
-    # Rivers / regions
-    "brahmaputra", "ganges", "yamuna", "godavari", "krishna", "kaveri",
-    "kedarnath", "nh-44", "kaziranga", "sundarbans",
-]
+# ── Geo extraction (Pan-India registry) ──────────────────────────────────────
+try:
+    from live_feed import PAN_INDIA_PLACES
+except ImportError:
+    from src.live_feed import PAN_INDIA_PLACES
+
+INDIA_LOCATIONS = PAN_INDIA_PLACES
 
 LOCATION_PATTERN = re.compile(
-    r"\b(" + "|".join(INDIA_LOCATIONS) + r")\b",
+    r"\b(" + "|".join(re.escape(loc) for loc in INDIA_LOCATIONS) + r")\b",
     re.IGNORECASE
 )
 
 
 def extract_locations(text: str) -> list:
-    """Extract location mentions from text using regex."""
+    """Extract location mentions from text using Pan-India regex."""
     matches = LOCATION_PATTERN.findall(text.lower())
     return list(set(matches))
 
 
 def add_geo_tags(df: pd.DataFrame, text_col: str = "clean_text") -> pd.DataFrame:
-    """Adds extracted location list to DataFrame."""
-    print("📍 Extracting geo-locations...")
+    """Adds extracted location list to DataFrame, merging feed location hints."""
     df["locations"] = df[text_col].apply(extract_locations)
+    if "location_hint" in df.columns:
+        for idx, row in df.iterrows():
+            hint = str(row.get("location_hint", "")).strip().lower()
+            if hint and hint not in ("none", "nan", "") and hint not in row["locations"]:
+                df.at[idx, "locations"] = row["locations"] + [hint]
     df["has_location"] = df["locations"].apply(lambda x: len(x) > 0)
-    n_geo = df["has_location"].sum()
-    print(f"✅ Geo-tagged {n_geo}/{len(df)} tweets with location mentions")
     return df
 
 
